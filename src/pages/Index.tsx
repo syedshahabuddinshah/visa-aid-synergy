@@ -1,11 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Questionnaire, { UserProfile } from "@/components/Questionnaire";
 import CountryCard, { CountryRecommendation } from "@/components/CountryCard";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 const Index = () => {
   const [recommendations, setRecommendations] = useState<CountryRecommendation[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const generateRecommendations = (profile: UserProfile) => {
     // This is a mock recommendation generator. In a real app, this would call an AI service.
@@ -32,14 +36,28 @@ const Index = () => {
     });
   };
 
+  const handleAuthClick = () => {
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-secondary">
       <div className="container py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-4">Immigration Assistant</h1>
-          <p className="text-lg text-gray-600">
-            Find your perfect immigration path with our AI-powered recommendation system
-          </p>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-primary mb-4">Immigration Assistant</h1>
+            <p className="text-lg text-gray-600">
+              Find your perfect immigration path with our AI-powered recommendation system
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <Button onClick={handleAuthClick} variant="outline">
+              Sign In
+            </Button>
+            <Button onClick={handleAuthClick}>
+              Sign Up
+            </Button>
+          </div>
         </div>
 
         {recommendations.length === 0 ? (
