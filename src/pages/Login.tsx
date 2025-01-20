@@ -52,7 +52,23 @@ const Login = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check for rate limit error
+        if (error.message.includes('rate_limit')) {
+          toast({
+            title: "Please wait",
+            description: "For security purposes, please wait a moment before trying again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
 
       toast({
         title: "Account created!",
@@ -97,7 +113,11 @@ const Login = () => {
             />
           </div>
           <div className="space-y-2">
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
               {isLoading ? "Loading..." : "Login"}
             </Button>
             <Button
