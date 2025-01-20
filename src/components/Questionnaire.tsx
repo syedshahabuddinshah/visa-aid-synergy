@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 export type UserProfile = {
   age: string;
@@ -25,8 +26,9 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     preferredCountries: [],
     purpose: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1 && (!profile.age || !profile.education)) {
       toast({
         title: "Please fill all fields",
@@ -51,10 +53,51 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       });
       return;
     }
+    
     if (step < 3) {
       setStep(step + 1);
     } else {
-      onComplete(profile);
+      setIsSubmitting(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast({
+            title: "Authentication required",
+            description: "Please sign in to save your profile.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const { error } = await supabase.from('profiles').upsert({
+          id: user.id,
+          age: parseInt(profile.age),
+          education: profile.education,
+          work_experience: parseInt(profile.workExperience),
+          language_score: profile.languageScore,
+          preferred_countries: profile.preferredCountries,
+          purpose: profile.purpose,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Profile saved!",
+          description: "Your immigration profile has been saved successfully.",
+        });
+
+        onComplete(profile);
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to save your profile. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -63,6 +106,8 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       setStep(step - 1);
     }
   };
+
+  // ... keep existing code (form rendering JSX)
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg animate-fadeIn">
@@ -190,8 +235,8 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
               Back
             </Button>
           )}
-          <Button className="ml-auto" onClick={handleNext}>
-            {step === 3 ? "Get Recommendations" : "Next"}
+          <Button className="ml-auto" onClick={handleNext} disabled={isSubmitting}>
+            {step === 3 ? (isSubmitting ? "Saving..." : "Get Recommendations") : "Next"}
           </Button>
         </div>
       </div>
