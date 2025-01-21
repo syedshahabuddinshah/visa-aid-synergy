@@ -42,8 +42,19 @@ const Login = () => {
               description: "For security purposes, please wait a moment before trying again.",
               variant: "destructive",
             });
+          } else if (error.message.includes('already registered')) {
+            toast({
+              title: "Account exists",
+              description: "An account with this email already exists. Please sign in instead.",
+              variant: "destructive",
+            });
+            setMode('signin');
           } else {
-            throw error;
+            toast({
+              title: "Error",
+              description: error.message,
+              variant: "destructive",
+            });
           }
           return;
         }
@@ -81,7 +92,11 @@ const Login = () => {
               variant: "destructive",
             });
           } else {
-            throw error;
+            toast({
+              title: "Error",
+              description: error.message,
+              variant: "destructive",
+            });
           }
           return;
         }
