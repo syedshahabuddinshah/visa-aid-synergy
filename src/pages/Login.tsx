@@ -10,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -19,7 +20,38 @@ const Login = () => {
     if (location.state?.mode) {
       setMode(location.state.mode);
     }
+    checkUser();
   }, [location.state]);
+
+  const checkUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+      if (session) {
+        navigate("/");
+      }
+    } catch (error: any) {
+      console.error("Error checking auth status:", error.message);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsAuthenticated(false);
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+      navigate("/login");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +63,10 @@ const Login = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/login`
+            emailRedirectTo: `${window.location.origin}/login`,
+            data: {
+              email: email,
+            }
           }
         });
 
@@ -106,6 +141,7 @@ const Login = () => {
           description: "You have successfully logged in.",
         });
         
+        setIsAuthenticated(true);
         navigate("/");
       }
     } catch (error: any) {
@@ -127,49 +163,61 @@ const Login = () => {
     <div className="min-h-screen bg-secondary flex items-center justify-center">
       <div className="w-full max-w-md p-8 bg-background rounded-lg shadow-lg">
         <h1 className="text-2xl font-bold text-center mb-6">
-          {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+          {isAuthenticated ? 'Account' : mode === 'signin' ? 'Welcome Back' : 'Create Account'}
         </h1>
-        <form onSubmit={handleAuth} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-            />
+        {isAuthenticated ? (
+          <div className="space-y-4">
+            <Button 
+              onClick={handleSignOut}
+              className="w-full"
+              variant="destructive"
+            >
+              Sign Out
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? "Loading..." : mode === 'signin' ? 'Sign In' : 'Sign Up'}
-          </Button>
-          <Button
-            type="button"
-            variant="link"
-            className="w-full"
-            onClick={toggleMode}
-          >
-            {mode === 'signin' 
-              ? "Don't have an account? Sign up" 
-              : "Already have an account? Sign in"}
-          </Button>
-        </form>
+        ) : (
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : mode === 'signin' ? 'Sign In' : 'Sign Up'}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              className="w-full"
+              onClick={toggleMode}
+            >
+              {mode === 'signin' 
+                ? "Don't have an account? Sign up" 
+                : "Already have an account? Sign in"}
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );
