@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -59,6 +60,15 @@ const Login = () => {
 
     try {
       if (mode === 'signup') {
+        if (password !== confirmPassword) {
+          toast({
+            title: "Passwords don't match",
+            description: "Please ensure both passwords match.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -199,6 +209,19 @@ const Login = () => {
                 required
               />
             </div>
+            {mode === 'signup' && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  required
+                />
+              </div>
+            )}
             <Button 
               type="submit" 
               className="w-full" 

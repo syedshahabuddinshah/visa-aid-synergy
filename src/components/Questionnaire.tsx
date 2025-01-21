@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ export type UserProfile = {
   purpose: string;
 };
 
+const AVAILABLE_COUNTRIES = ["Canada", "Australia", "UK", "USA", "New Zealand", "Germany"];
+
 const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => void }) => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -27,6 +29,41 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     purpose: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    checkExistingProfile();
+  }, []);
+
+  const checkExistingProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setExistingProfile(data);
+        setProfile({
+          age: data.age.toString(),
+          education: data.education,
+          workExperience: data.work_experience.toString(),
+          languageScore: data.language_score,
+          preferredCountries: data.preferred_countries,
+          purpose: data.purpose,
+        });
+        onComplete(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const handleNext = async () => {
     if (step === 1 && (!profile.age || !profile.education)) {
@@ -88,7 +125,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         });
 
         onComplete(profile);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error saving profile:', error);
         toast({
           title: "Error",
@@ -107,7 +144,17 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     }
   };
 
-  // ... keep existing code (form rendering JSX)
+  const handleSelectAllCountries = () => {
+    setProfile({ ...profile, preferredCountries: AVAILABLE_COUNTRIES });
+  };
+
+  const handleDeselectAllCountries = () => {
+    setProfile({ ...profile, preferredCountries: [] });
+  };
+
+  if (existingProfile) {
+    return null;
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg animate-fadeIn">
@@ -208,8 +255,24 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
             </div>
             <div className="space-y-2">
               <Label>Preferred Countries</Label>
+              <div className="flex gap-2 mb-2">
+                <Button
+                  variant="outline"
+                  onClick={handleSelectAllCountries}
+                  className="w-1/2"
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDeselectAllCountries}
+                  className="w-1/2"
+                >
+                  Deselect All
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                {["Canada", "Australia", "UK", "USA", "New Zealand", "Germany"].map((country) => (
+                {AVAILABLE_COUNTRIES.map((country) => (
                   <Button
                     key={country}
                     variant={profile.preferredCountries.includes(country) ? "default" : "outline"}
