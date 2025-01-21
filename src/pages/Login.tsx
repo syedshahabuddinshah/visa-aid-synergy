@@ -82,7 +82,7 @@ const Login = () => {
           if (error.message.includes('Email not confirmed')) {
             toast({
               title: "Email not verified",
-              description: "Please check your email and verify your account before signing in.",
+              description: "Please check your email and click the verification link we sent you. Need a new link? Try signing up again.",
               variant: "destructive",
             });
           } else if (error.message.includes('Invalid login credentials')) {
