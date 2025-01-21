@@ -1,169 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { SignInForm } from "@/components/auth/SignInForm";
+import { SignUpForm } from "@/components/auth/SignUpForm";
+import { useAuthentication } from "@/hooks/useAuthentication";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.state?.mode) {
-      setMode(location.state.mode);
-    }
-    checkUser();
-  }, [location.state]);
-
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      if (session) {
-        navigate("/");
-      }
-    } catch (error: any) {
-      console.error("Error checking auth status:", error.message);
-    }
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setIsAuthenticated(false);
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-      navigate("/login");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (mode === 'signup') {
-        if (password !== confirmPassword) {
-          toast({
-            title: "Passwords don't match",
-            description: "Please ensure both passwords match.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/login`,
-            data: {
-              email: email,
-            }
-          }
-        });
-
-        if (error) {
-          if (error.message.includes('rate_limit')) {
-            toast({
-              title: "Please wait",
-              description: "For security purposes, please wait a moment before trying again.",
-              variant: "destructive",
-            });
-          } else if (error.message.includes('already registered')) {
-            toast({
-              title: "Account exists",
-              description: "An account with this email already exists. Please sign in instead.",
-              variant: "destructive",
-            });
-            setMode('signin');
-          } else {
-            toast({
-              title: "Error",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-          return;
-        }
-
-        if (data?.user?.identities?.length === 0) {
-          toast({
-            title: "Account exists",
-            description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
-          setMode('signin');
-        } else {
-          toast({
-            title: "Check your email",
-            description: "We've sent you a verification link to complete your registration.",
-          });
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          if (error.message.includes('Email not confirmed')) {
-            toast({
-              title: "Email not verified",
-              description: "Please check your email and click the verification link we sent you. Need a new link? Try signing up again.",
-              variant: "destructive",
-            });
-          } else if (error.message.includes('Invalid login credentials')) {
-            toast({
-              title: "Invalid credentials",
-              description: "Please check your email and password and try again.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Error",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-          return;
-        }
-
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
-        });
-        
-        setIsAuthenticated(true);
-        navigate("/");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { isLoading, isAuthenticated, handleSignIn, handleSignUp, handleSignOut } = useAuthentication();
 
   const toggleMode = () => {
     setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -185,61 +28,18 @@ const Login = () => {
               Sign Out
             </Button>
           </div>
+        ) : mode === 'signin' ? (
+          <SignInForm
+            onSubmit={handleSignIn}
+            isLoading={isLoading}
+            onToggleMode={toggleMode}
+          />
         ) : (
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-            {mode === 'signup' && (
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  required
-                />
-              </div>
-            )}
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? "Loading..." : mode === 'signin' ? 'Sign In' : 'Sign Up'}
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              className="w-full"
-              onClick={toggleMode}
-            >
-              {mode === 'signin' 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"}
-            </Button>
-          </form>
+          <SignUpForm
+            onSubmit={handleSignUp}
+            isLoading={isLoading}
+            onToggleMode={toggleMode}
+          />
         )}
       </div>
     </div>
