@@ -11,6 +11,14 @@ const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const handleSignIn = () => {
+    navigate("/login", { state: { mode: 'signin' } });
+  };
+
+  const handleSignUp = () => {
+    navigate("/login", { state: { mode: 'signup' } });
+  };
+
   const generateRecommendations = (profile: UserProfile) => {
     // This is a mock recommendation generator. In a real app, this would call an AI service.
     const mockRecommendations: CountryRecommendation[] = profile.preferredCountries.map((country) => ({
@@ -36,10 +44,6 @@ const Index = () => {
     });
   };
 
-  const handleAuthClick = () => {
-    navigate("/login");
-  };
-
   return (
     <div className="min-h-screen bg-secondary">
       <div className="container py-8">
@@ -51,10 +55,10 @@ const Index = () => {
             </p>
           </div>
           <div className="flex gap-4">
-            <Button onClick={handleAuthClick} variant="outline">
+            <Button onClick={handleSignIn} variant="outline">
               Sign In
             </Button>
-            <Button onClick={handleAuthClick}>
+            <Button onClick={handleSignUp}>
               Sign Up
             </Button>
           </div>
