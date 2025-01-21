@@ -27,9 +27,12 @@ const Login = () => {
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/login`
+          }
         });
 
         if (error) {
@@ -45,10 +48,19 @@ const Login = () => {
           return;
         }
 
-        toast({
-          title: "Check your email",
-          description: "We've sent you a verification link to complete your registration.",
-        });
+        if (data?.user?.identities?.length === 0) {
+          toast({
+            title: "Account exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          setMode('signin');
+        } else {
+          toast({
+            title: "Check your email",
+            description: "We've sent you a verification link to complete your registration.",
+          });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -81,7 +93,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-secondary flex items-center justify-center">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
+      <div className="w-full max-w-md p-8 bg-background rounded-lg shadow-lg">
         <h1 className="text-2xl font-bold text-center mb-6">
           {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
         </h1>
