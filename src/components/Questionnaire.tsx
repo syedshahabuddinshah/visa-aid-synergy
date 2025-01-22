@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useRecommendations } from "@/contexts/RecommendationsContext";
 import PersonalInfoStep from "./questionnaire/PersonalInfoStep";
 import ProfessionalStep from "./questionnaire/ProfessionalStep";
 import PreferencesStep from "./questionnaire/PreferencesStep";
+import { Button } from "@/components/ui/button";
 
 export type UserProfile = {
   age: string;
@@ -21,6 +22,7 @@ const AVAILABLE_COUNTRIES = ["Canada", "Australia", "UK", "USA", "New Zealand", 
 const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => void }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { setRecommendations } = useRecommendations();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState<UserProfile>(() => {
     const savedProfile = sessionStorage.getItem('tempProfile');
@@ -40,7 +42,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     checkExistingProfile();
   }, []);
 
-  // Save profile to session storage whenever it changes
   useEffect(() => {
     sessionStorage.setItem('tempProfile', JSON.stringify(profile));
   }, [profile]);
@@ -56,15 +57,13 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .eq('id', user.id)
         .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        if (error.code !== 'PGRST116') {
-          toast({
-            title: "Error",
-            description: "Failed to fetch your profile. Please try again.",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Error",
+          description: "Failed to fetch your profile. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -126,6 +125,25 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     return true;
   };
 
+  const generateRecommendations = (profile: UserProfile) => {
+    const recommendations = profile.preferredCountries.map(country => ({
+      name: country,
+      score: Math.random() * 100,
+      requirements: [
+        "Valid passport",
+        "Proof of funds",
+        "Language proficiency",
+        "Educational credentials",
+      ],
+      processingTime: "3-6 months",
+      visaType: profile.purpose === "study" ? "Student Visa" : 
+                profile.purpose === "work" ? "Work Visa" : 
+                "Permanent Residency",
+    }));
+    
+    setRecommendations(recommendations);
+  };
+
   const handleNext = async () => {
     if (!validateStep()) return;
     
@@ -137,7 +155,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          // Save current state to session storage before redirecting
           sessionStorage.setItem('tempProfile', JSON.stringify(profile));
           sessionStorage.setItem('lastStep', step.toString());
           
@@ -161,12 +178,8 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           updated_at: new Date().toISOString(),
         });
 
-        if (error) {
-          console.error('Profile save error:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        // Clear temporary storage after successful save
         sessionStorage.removeItem('tempProfile');
         sessionStorage.removeItem('lastStep');
 
@@ -175,6 +188,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           description: "Your immigration profile has been saved successfully.",
         });
 
+        generateRecommendations(profile);
         onComplete(profile);
       } catch (error: any) {
         console.error('Error saving profile:', error);
