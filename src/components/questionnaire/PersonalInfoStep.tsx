@@ -38,16 +38,6 @@ const PersonalInfoStep = ({ profile, onProfileChange }: PersonalInfoStepProps) =
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="availableFunds">Available Funds (USD)</Label>
-        <Input
-          id="availableFunds"
-          type="number"
-          value={profile.availableFunds}
-          onChange={(e) => onProfileChange({ availableFunds: e.target.value })}
-          placeholder="Enter available funds in USD"
-        />
-      </div>
     </>
   );
 };
