@@ -15,6 +15,7 @@ export type UserProfile = {
   languageScore: string;
   preferredCountries: string[];
   purpose: string;
+  availableFunds: string;
 };
 
 const AVAILABLE_COUNTRIES = ["Canada", "Australia", "UK", "USA", "New Zealand", "Germany"];
@@ -33,6 +34,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       languageScore: "",
       preferredCountries: [],
       purpose: "",
+      availableFunds: "",
     };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +57,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .maybeSingle(); // Changed from .single() to .maybeSingle()
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
@@ -75,6 +77,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           languageScore: data.language_score,
           preferredCountries: data.preferred_countries,
           purpose: data.purpose,
+          availableFunds: data.available_funds?.toString() || "",
         };
         setExistingProfile(formattedProfile);
         setProfile(formattedProfile);
@@ -92,10 +95,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const validateStep = () => {
     switch (step) {
       case 1:
-        if (!profile.age || !profile.education) {
+        if (!profile.age || !profile.education || !profile.availableFunds) {
           toast({
             title: "Please fill all fields",
-            description: "Age and education are required to proceed.",
+            description: "Age, education, and available funds are required to proceed.",
             variant: "destructive",
           });
           return false;
@@ -125,23 +128,89 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     return true;
   };
 
-  const generateRecommendations = (profile: UserProfile) => {
-    const recommendations = profile.preferredCountries.map(country => ({
-      name: country,
-      score: Math.random() * 100,
-      requirements: [
-        "Valid passport",
-        "Proof of funds",
-        "Language proficiency",
-        "Educational credentials",
-      ],
-      processingTime: "3-6 months",
-      visaType: profile.purpose === "study" ? "Student Visa" : 
-                profile.purpose === "work" ? "Work Visa" : 
-                "Permanent Residency",
-    }));
-    
-    setRecommendations(recommendations);
+  const generateRecommendations = async (profile: UserProfile) => {
+    try {
+      const recommendations = profile.preferredCountries.map(country => {
+        const score = Math.min(Math.random() * 100, 100);
+        const fundRequirement = {
+          "Canada": "CAD 20,000",
+          "Australia": "AUD 25,000",
+          "UK": "GBP 15,000",
+          "USA": "USD 30,000",
+          "New Zealand": "NZD 20,000",
+          "Germany": "EUR 18,000",
+        }[country];
+
+        const eligibilityFactors = [];
+        const ineligibilityFactors = [];
+
+        const age = parseInt(profile.age);
+        if (age >= 18 && age <= 45) {
+          eligibilityFactors.push("Age requirement met");
+        } else {
+          ineligibilityFactors.push("Age outside preferred range (18-45)");
+        }
+
+        if (profile.education === "masters" || profile.education === "phd") {
+          eligibilityFactors.push("Higher education qualification");
+        }
+
+        const workExp = parseInt(profile.workExperience);
+        if (workExp >= 3) {
+          eligibilityFactors.push(`${workExp} years of work experience`);
+        } else {
+          ineligibilityFactors.push("Insufficient work experience");
+        }
+
+        const availableFunds = parseInt(profile.availableFunds);
+        const requiredFunds = parseInt(fundRequirement.replace(/[^0-9]/g, ''));
+        if (availableFunds >= requiredFunds) {
+          eligibilityFactors.push("Sufficient funds available");
+        } else {
+          ineligibilityFactors.push(`Insufficient funds (requires ${fundRequirement})`);
+        }
+
+        return {
+          name: country,
+          score: score,
+          requirements: [
+            `Minimum funds required: ${fundRequirement}`,
+            "Valid passport",
+            "Clean criminal record",
+            "Medical examination",
+          ],
+          processingTime: "3-6 months",
+          visaTypes: [
+            {
+              type: "Work Visa",
+              requirements: ["Job offer", "Skills assessment", "Language proficiency"],
+              processingTime: "2-4 months",
+            },
+            {
+              type: "Student Visa",
+              requirements: ["University acceptance", "Language proficiency", "Proof of funds"],
+              processingTime: "1-3 months",
+            },
+            {
+              type: "Permanent Residency",
+              requirements: ["Points qualification", "Skills assessment", "Language proficiency"],
+              processingTime: "6-12 months",
+            },
+          ],
+          eligibilityFactors,
+          ineligibilityFactors,
+        };
+      });
+      
+      setRecommendations(recommendations);
+    } catch (error) {
+      console.error('Error generating recommendations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate recommendations. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleNext = async () => {
@@ -175,6 +244,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           language_score: profile.languageScore,
           preferred_countries: profile.preferredCountries,
           purpose: profile.purpose,
+          available_funds: parseInt(profile.availableFunds),
           updated_at: new Date().toISOString(),
         });
 
@@ -188,7 +258,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           description: "Your immigration profile has been saved successfully.",
         });
 
-        generateRecommendations(profile);
+        await generateRecommendations(profile);
         onComplete(profile);
       } catch (error: any) {
         console.error('Error saving profile:', error);
