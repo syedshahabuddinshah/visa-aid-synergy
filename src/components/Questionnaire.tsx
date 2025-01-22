@@ -46,22 +46,33 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code !== 'PGRST116') { // Not Found error code
+          throw error;
+        }
+        return; // No existing profile found
+      }
 
       if (data) {
-        setExistingProfile(data);
-        setProfile({
+        const formattedProfile = {
           age: data.age.toString(),
           education: data.education,
           workExperience: data.work_experience.toString(),
           languageScore: data.language_score,
           preferredCountries: data.preferred_countries,
           purpose: data.purpose,
-        });
-        onComplete(data);
+        };
+        setExistingProfile(formattedProfile);
+        setProfile(formattedProfile);
+        onComplete(formattedProfile);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch your profile. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -115,6 +126,9 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           language_score: profile.languageScore,
           preferred_countries: profile.preferredCountries,
           purpose: profile.purpose,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
         });
 
         if (error) throw error;
