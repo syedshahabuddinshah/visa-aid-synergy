@@ -40,6 +40,7 @@ const Index = () => {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
       setUserEmail(null);
+      setRecommendations([]);
       toast({
         title: "Signed out successfully",
         description: "You have been logged out.",
@@ -54,88 +55,23 @@ const Index = () => {
     }
   };
 
-  const generateVisaRecommendations = (country: string, purpose: string) => {
-    const visaTypes = {
-      study: [
-        {
-          type: "Student Visa",
-          requirements: [
-            "Valid passport",
-            "Acceptance letter from institution",
-            "Proof of funds",
-            "Language proficiency",
-          ],
-          processingTime: "4-8 weeks",
-        },
-        {
-          type: "Exchange Student Visa",
-          requirements: [
-            "Exchange program acceptance",
-            "Valid passport",
-            "Sponsorship letter",
-          ],
-          processingTime: "3-6 weeks",
-        },
-      ],
-      work: [
-        {
-          type: "Skilled Worker Visa",
-          requirements: [
-            "Job offer",
-            "Work experience",
-            "Language proficiency",
-            "Educational credentials",
-          ],
-          processingTime: "8-12 weeks",
-        },
-        {
-          type: "Working Holiday Visa",
-          requirements: [
-            "Age 18-30",
-            "Valid passport",
-            "Proof of funds",
-          ],
-          processingTime: "4-6 weeks",
-        },
-      ],
-      permanent: [
-        {
-          type: "Permanent Residency",
-          requirements: [
-            "Points qualification",
-            "Language proficiency",
-            "Work experience",
-            "Educational assessment",
-          ],
-          processingTime: "6-12 months",
-        },
-        {
-          type: "Family Sponsorship",
-          requirements: [
-            "Family relation proof",
-            "Sponsor eligibility",
-            "Financial capability",
-          ],
-          processingTime: "12-24 months",
-        },
-      ],
-    };
-
-    return visaTypes[purpose as keyof typeof visaTypes].map(visa => ({
-      name: country,
-      score: Math.random() * 0.5 + 0.5,
-      requirements: visa.requirements,
-      processingTime: visa.processingTime,
-      visaType: visa.type,
-    }));
-  };
-
-  const generateRecommendations = (profile: UserProfile) => {
+  const generateVisaRecommendations = (profile: UserProfile) => {
     const allRecommendations: CountryRecommendation[] = [];
     
     profile.preferredCountries.forEach(country => {
-      const countryVisas = generateVisaRecommendations(country, profile.purpose);
-      allRecommendations.push(...countryVisas);
+      // Generate recommendations based on profile data
+      const score = calculateScore(profile, country);
+      const visaTypes = getVisaTypes(profile.purpose, country);
+      
+      visaTypes.forEach(visa => {
+        allRecommendations.push({
+          name: country,
+          score: score,
+          requirements: visa.requirements,
+          processingTime: visa.processingTime,
+          visaType: visa.type,
+        });
+      });
     });
 
     allRecommendations.sort((a, b) => b.score - a.score);
@@ -145,6 +81,79 @@ const Index = () => {
       title: "Recommendations Generated!",
       description: "Based on your profile, we've found the best visa options for you.",
     });
+  };
+
+  const calculateScore = (profile: UserProfile, country: string): number => {
+    let score = 0.5; // Base score
+
+    // Age factor (25-35 gets highest score)
+    const age = parseInt(profile.age);
+    if (age >= 25 && age <= 35) score += 0.2;
+    else if (age < 25 || age > 50) score -= 0.1;
+
+    // Education factor
+    if (profile.education === "phd") score += 0.2;
+    else if (profile.education === "masters") score += 0.15;
+    else if (profile.education === "bachelors") score += 0.1;
+
+    // Work experience factor
+    const experience = parseInt(profile.workExperience);
+    if (experience >= 5) score += 0.2;
+    else if (experience >= 3) score += 0.1;
+
+    // Language score factor
+    const languageScore = parseFloat(profile.languageScore);
+    if (languageScore >= 7.0) score += 0.2;
+    else if (languageScore >= 6.0) score += 0.1;
+
+    // Ensure score is between 0 and 1
+    return Math.max(0, Math.min(1, score));
+  };
+
+  const getVisaTypes = (purpose: string, country: string) => {
+    // This could be expanded with more country-specific visa types
+    const visaTypes = {
+      study: [
+        {
+          type: "Student Visa",
+          requirements: [
+            "Valid passport",
+            "Acceptance letter from institution",
+            "Proof of funds",
+            "Language proficiency test results",
+          ],
+          processingTime: "4-8 weeks",
+        },
+      ],
+      work: [
+        {
+          type: "Skilled Worker Visa",
+          requirements: [
+            "Job offer from approved employer",
+            "Minimum salary requirement",
+            "Relevant work experience",
+            "Language proficiency certification",
+          ],
+          processingTime: "8-12 weeks",
+        },
+      ],
+      permanent: [
+        {
+          type: "Permanent Residency",
+          requirements: [
+            "Points qualification",
+            "Language proficiency",
+            "Work experience verification",
+            "Educational credentials assessment",
+            "Medical examination",
+            "Police clearance",
+          ],
+          processingTime: "6-12 months",
+        },
+      ],
+    };
+
+    return visaTypes[purpose as keyof typeof visaTypes] || [];
   };
 
   return (
@@ -179,7 +188,7 @@ const Index = () => {
         </div>
 
         {recommendations.length === 0 ? (
-          <Questionnaire onComplete={generateRecommendations} />
+          <Questionnaire onComplete={generateVisaRecommendations} />
         ) : (
           <div className="space-y-8 animate-fadeIn">
             <h2 className="text-2xl font-bold text-primary text-center">Recommended Visa Options</h2>

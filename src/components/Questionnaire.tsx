@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
 import PersonalInfoStep from "./questionnaire/PersonalInfoStep";
 import ProfessionalStep from "./questionnaire/ProfessionalStep";
 import PreferencesStep from "./questionnaire/PreferencesStep";
@@ -19,14 +20,18 @@ const AVAILABLE_COUNTRIES = ["Canada", "Australia", "UK", "USA", "New Zealand", 
 
 const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => void }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState<UserProfile>({
-    age: "",
-    education: "",
-    workExperience: "",
-    languageScore: "",
-    preferredCountries: [],
-    purpose: "",
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    const savedProfile = sessionStorage.getItem('tempProfile');
+    return savedProfile ? JSON.parse(savedProfile) : {
+      age: "",
+      education: "",
+      workExperience: "",
+      languageScore: "",
+      preferredCountries: [],
+      purpose: "",
+    };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
@@ -34,6 +39,11 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   useEffect(() => {
     checkExistingProfile();
   }, []);
+
+  // Save profile to session storage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('tempProfile', JSON.stringify(profile));
+  }, [profile]);
 
   const checkExistingProfile = async () => {
     try {
@@ -47,9 +57,13 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .single();
 
       if (error) {
+        console.error('Error fetching profile:', error);
         if (error.code !== 'PGRST116') {
-          console.error('Error fetching profile:', error);
-          return;
+          toast({
+            title: "Error",
+            description: "Failed to fetch your profile. Please try again.",
+            variant: "destructive",
+          });
         }
         return;
       }
@@ -69,11 +83,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch your profile. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -128,11 +137,16 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
+          // Save current state to session storage before redirecting
+          sessionStorage.setItem('tempProfile', JSON.stringify(profile));
+          sessionStorage.setItem('lastStep', step.toString());
+          
           toast({
             title: "Authentication required",
-            description: "Please sign in to save your profile.",
-            variant: "destructive",
+            description: "Please sign in to save your profile and get recommendations.",
           });
+          
+          navigate("/login");
           return;
         }
 
@@ -145,11 +159,16 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           preferred_countries: profile.preferredCountries,
           purpose: profile.purpose,
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'id'
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Profile save error:', error);
+          throw error;
+        }
+
+        // Clear temporary storage after successful save
+        sessionStorage.removeItem('tempProfile');
+        sessionStorage.removeItem('lastStep');
 
         toast({
           title: "Profile saved!",
