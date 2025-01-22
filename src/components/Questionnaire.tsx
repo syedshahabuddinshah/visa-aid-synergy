@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
+import PersonalInfoStep from "./questionnaire/PersonalInfoStep";
+import ProfessionalStep from "./questionnaire/ProfessionalStep";
+import PreferencesStep from "./questionnaire/PreferencesStep";
 
 export type UserProfile = {
   age: string;
@@ -47,10 +47,11 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .single();
 
       if (error) {
-        if (error.code !== 'PGRST116') { // Not Found error code
-          throw error;
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+          return;
         }
-        return; // No existing profile found
+        return;
       }
 
       if (data) {
@@ -76,31 +77,48 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     }
   };
 
+  const handleProfileChange = (updates: Partial<UserProfile>) => {
+    setProfile(prev => ({ ...prev, ...updates }));
+  };
+
+  const validateStep = () => {
+    switch (step) {
+      case 1:
+        if (!profile.age || !profile.education) {
+          toast({
+            title: "Please fill all fields",
+            description: "Age and education are required to proceed.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      case 2:
+        if (!profile.workExperience || !profile.languageScore) {
+          toast({
+            title: "Please fill all fields",
+            description: "Work experience and language score are required to proceed.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+      case 3:
+        if (!profile.purpose || profile.preferredCountries.length === 0) {
+          toast({
+            title: "Please fill all fields",
+            description: "Purpose and preferred countries are required to proceed.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
   const handleNext = async () => {
-    if (step === 1 && (!profile.age || !profile.education)) {
-      toast({
-        title: "Please fill all fields",
-        description: "Age and education are required to proceed.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (step === 2 && (!profile.workExperience || !profile.languageScore)) {
-      toast({
-        title: "Please fill all fields",
-        description: "Work experience and language score are required to proceed.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (step === 3 && (!profile.purpose || profile.preferredCountries.length === 0)) {
-      toast({
-        title: "Please fill all fields",
-        description: "Purpose and preferred countries are required to proceed.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!validateStep()) return;
     
     if (step < 3) {
       setStep(step + 1);
@@ -158,14 +176,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     }
   };
 
-  const handleSelectAllCountries = () => {
-    setProfile({ ...profile, preferredCountries: AVAILABLE_COUNTRIES });
-  };
-
-  const handleDeselectAllCountries = () => {
-    setProfile({ ...profile, preferredCountries: [] });
-  };
-
   if (existingProfile) {
     return null;
   }
@@ -194,116 +204,19 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
 
       <div className="space-y-6">
         {step === 1 && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="age">Age</Label>
-              <Input
-                id="age"
-                type="number"
-                value={profile.age}
-                onChange={(e) => setProfile({ ...profile, age: e.target.value })}
-                placeholder="Enter your age"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="education">Highest Education Level</Label>
-              <Select
-                value={profile.education}
-                onValueChange={(value) => setProfile({ ...profile, education: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select education level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="high-school">High School</SelectItem>
-                  <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
-                  <SelectItem value="masters">Master's Degree</SelectItem>
-                  <SelectItem value="phd">PhD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
+          <PersonalInfoStep profile={profile} onProfileChange={handleProfileChange} />
         )}
 
         {step === 2 && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="workExperience">Work Experience (years)</Label>
-              <Input
-                id="workExperience"
-                type="number"
-                value={profile.workExperience}
-                onChange={(e) => setProfile({ ...profile, workExperience: e.target.value })}
-                placeholder="Years of work experience"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="languageScore">Language Score (IELTS/TOEFL)</Label>
-              <Input
-                id="languageScore"
-                value={profile.languageScore}
-                onChange={(e) => setProfile({ ...profile, languageScore: e.target.value })}
-                placeholder="Enter your language score"
-              />
-            </div>
-          </>
+          <ProfessionalStep profile={profile} onProfileChange={handleProfileChange} />
         )}
 
         {step === 3 && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="purpose">Immigration Purpose</Label>
-              <Select
-                value={profile.purpose}
-                onValueChange={(value) => setProfile({ ...profile, purpose: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select purpose" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="study">Study</SelectItem>
-                  <SelectItem value="work">Work</SelectItem>
-                  <SelectItem value="permanent">Permanent Residence</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Preferred Countries</Label>
-              <div className="flex gap-2 mb-2">
-                <Button
-                  variant="outline"
-                  onClick={handleSelectAllCountries}
-                  className="w-1/2"
-                >
-                  Select All
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDeselectAllCountries}
-                  className="w-1/2"
-                >
-                  Deselect All
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {AVAILABLE_COUNTRIES.map((country) => (
-                  <Button
-                    key={country}
-                    variant={profile.preferredCountries.includes(country) ? "default" : "outline"}
-                    onClick={() => {
-                      const newCountries = profile.preferredCountries.includes(country)
-                        ? profile.preferredCountries.filter((c) => c !== country)
-                        : [...profile.preferredCountries, country];
-                      setProfile({ ...profile, preferredCountries: newCountries });
-                    }}
-                    className="w-full"
-                  >
-                    {country}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </>
+          <PreferencesStep 
+            profile={profile} 
+            onProfileChange={handleProfileChange}
+            availableCountries={AVAILABLE_COUNTRIES}
+          />
         )}
 
         <div className="flex justify-between mt-8">
