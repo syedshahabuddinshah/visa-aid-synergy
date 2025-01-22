@@ -55,7 +55,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
