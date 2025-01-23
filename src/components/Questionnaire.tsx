@@ -7,6 +7,7 @@ import PersonalInfoStep from "./questionnaire/PersonalInfoStep";
 import ProfessionalStep from "./questionnaire/ProfessionalStep";
 import PreferencesStep from "./questionnaire/PreferencesStep";
 import { Button } from "@/components/ui/button";
+import { QuestionnaireLogic } from "./questionnaire/QuestionnaireLogic";
 
 export type UserProfile = {
   age: string;
@@ -39,6 +40,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkExistingProfile();
@@ -51,7 +53,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const checkExistingProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('profiles')
@@ -61,17 +66,18 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
+        setIsLoading(false);
         return;
       }
 
       if (data) {
         const formattedProfile = {
-          age: data.age.toString(),
-          education: data.education,
-          workExperience: data.work_experience.toString(),
-          languageScore: data.language_score,
-          preferredCountries: data.preferred_countries,
-          purpose: data.purpose,
+          age: data.age?.toString() || "",
+          education: data.education || "",
+          workExperience: data.work_experience?.toString() || "",
+          languageScore: data.language_score || "",
+          preferredCountries: data.preferred_countries || [],
+          purpose: data.purpose || "",
           availableFunds: data.available_funds?.toString() || "",
         };
         setExistingProfile(formattedProfile);
@@ -80,80 +86,9 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const generateRecommendations = (profile: UserProfile) => {
-    const recommendations = profile.preferredCountries.map(country => {
-      const eligibilityData = calculateEligibility(country, profile);
-      return {
-        name: country,
-        score: eligibilityData.score,
-        requirements: eligibilityData.requirements,
-        processingTime: eligibilityData.processingTime,
-        visaTypes: eligibilityData.visaTypes,
-        fundsRequired: eligibilityData.fundsRequired,
-        eligibilityReason: eligibilityData.reason,
-        isEligible: eligibilityData.isEligible,
-      };
-    });
-    
-    setRecommendations(recommendations);
-  };
-
-  const calculateEligibility = (country: string, profile: UserProfile) => {
-    const availableFunds = parseInt(profile.availableFunds) || 0;
-    const age = parseInt(profile.age) || 0;
-    const workExp = parseInt(profile.workExperience) || 0;
-    
-    let score = 0;
-    let requirements: string[] = [];
-    let visaTypes: string[] = [];
-    let fundsRequired = 0;
-    let reason = "";
-    let isEligible = true;
-
-    switch(country) {
-      case "Canada":
-        fundsRequired = 13000;
-        if (age >= 18 && age <= 35) score += 0.3;
-        if (workExp >= 3) score += 0.3;
-        if (profile.languageScore === "high") score += 0.4;
-        
-        visaTypes = ["Study Permit", "Work Permit", "Express Entry"];
-        requirements = [
-          `Minimum funds required: $${fundsRequired}`,
-          "Valid passport",
-          "Language proficiency test",
-          "Educational credentials assessment",
-        ];
-        
-        if (availableFunds < fundsRequired) {
-          isEligible = false;
-          reason = `Insufficient funds. You need minimum $${fundsRequired}`;
-        } else {
-          reason = "Eligible for multiple visa pathways based on profile";
-        }
-        break;
-
-      // Add similar cases for other countries
-      default:
-        fundsRequired = 10000;
-        score = 0.5;
-        visaTypes = ["Student Visa", "Work Visa"];
-        requirements = ["Basic requirements"];
-        reason = "Basic eligibility criteria met";
-    }
-
-    return {
-      score: Math.min(score, 1), // Ensure score doesn't exceed 1 (100%)
-      requirements,
-      processingTime: "3-6 months",
-      visaTypes,
-      fundsRequired,
-      reason,
-      isEligible,
-    };
   };
 
   const handleProfileChange = (updates: Partial<UserProfile>) => {
@@ -241,7 +176,9 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           description: "Your immigration profile has been saved successfully.",
         });
 
-        generateRecommendations(profile);
+        const questionnaireLogic = new QuestionnaireLogic();
+        const recommendations = questionnaireLogic.generateRecommendations(profile);
+        setRecommendations(recommendations);
         onComplete(profile);
       } catch (error: any) {
         console.error('Error saving profile:', error);
@@ -261,6 +198,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       setStep(step - 1);
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (existingProfile) {
     return null;
