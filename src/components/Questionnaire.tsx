@@ -43,53 +43,54 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkExistingProfile();
-  }, []);
+    const checkExistingProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
 
-  useEffect(() => {
-    sessionStorage.setItem('tempProfile', JSON.stringify(profile));
-  }, [profile]);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
 
-  const checkExistingProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+          setIsLoading(false);
+          return;
+        }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
+        if (data) {
+          const formattedProfile = {
+            age: data.age?.toString() || "",
+            education: data.education || "",
+            workExperience: data.work_experience?.toString() || "",
+            languageScore: data.language_score || "",
+            preferredCountries: data.preferred_countries || [],
+            purpose: data.purpose || "",
+            availableFunds: data.available_funds?.toString() || "",
+          };
+          setExistingProfile(formattedProfile);
+          setProfile(formattedProfile);
+          
+          // Generate recommendations for existing profile
+          const questionnaireLogic = new QuestionnaireLogic();
+          const recommendations = questionnaireLogic.generateRecommendations(formattedProfile);
+          setRecommendations(recommendations);
+          onComplete(formattedProfile);
+        }
+      } catch (error) {
         console.error('Error fetching profile:', error);
+      } finally {
         setIsLoading(false);
-        return;
       }
+    };
 
-      if (data) {
-        const formattedProfile = {
-          age: data.age?.toString() || "",
-          education: data.education || "",
-          workExperience: data.work_experience?.toString() || "",
-          languageScore: data.language_score || "",
-          preferredCountries: data.preferred_countries || [],
-          purpose: data.purpose || "",
-          availableFunds: data.available_funds?.toString() || "",
-        };
-        setExistingProfile(formattedProfile);
-        setProfile(formattedProfile);
-        onComplete(formattedProfile);
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    checkExistingProfile();
+  }, [setRecommendations, onComplete]);
 
   const handleProfileChange = (updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }));
@@ -200,11 +201,11 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center items-center p-8">Loading...</div>;
   }
 
   if (existingProfile) {
-    return null;
+    return <RecommendationsList />;
   }
 
   return (

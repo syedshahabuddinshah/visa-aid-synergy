@@ -5,7 +5,13 @@ import { useRecommendations } from "@/contexts/RecommendationsContext";
 const RecommendationsList = () => {
   const { recommendations, resetRecommendations } = useRecommendations();
 
-  if (recommendations.length === 0) return null;
+  if (recommendations.length === 0) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-gray-600">No recommendations available. Please complete the questionnaire.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fadeIn">
