@@ -6,6 +6,7 @@ import { useRecommendations } from "@/contexts/RecommendationsContext";
 import PersonalInfoStep from "./questionnaire/PersonalInfoStep";
 import ProfessionalStep from "./questionnaire/ProfessionalStep";
 import PreferencesStep from "./questionnaire/PreferencesStep";
+import RecommendationsList from "./recommendations/RecommendationsList";
 import { Button } from "@/components/ui/button";
 import { QuestionnaireLogic } from "./questionnaire/QuestionnaireLogic";
 
@@ -208,6 +209,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     return (
       <div className="text-center p-8">
         <p className="text-gray-600 mb-4">Your profile has been loaded and recommendations are being generated.</p>
+        <RecommendationsList />
       </div>
     );
   }
