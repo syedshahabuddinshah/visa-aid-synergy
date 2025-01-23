@@ -78,7 +78,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           
           // Generate recommendations for existing profile
           const questionnaireLogic = new QuestionnaireLogic();
-          const recommendations = questionnaireLogic.generateRecommendations(formattedProfile);
+          const recommendations = await questionnaireLogic.generateRecommendations(formattedProfile);
           setRecommendations(recommendations);
           onComplete(formattedProfile);
         }
@@ -178,7 +178,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         });
 
         const questionnaireLogic = new QuestionnaireLogic();
-        const recommendations = questionnaireLogic.generateRecommendations(profile);
+        const recommendations = await questionnaireLogic.generateRecommendations(profile);
         setRecommendations(recommendations);
         onComplete(profile);
       } catch (error: any) {
@@ -205,7 +205,11 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   }
 
   if (existingProfile) {
-    return <RecommendationsList />;
+    return (
+      <div className="text-center p-8">
+        <p className="text-gray-600 mb-4">Your profile has been loaded and recommendations are being generated.</p>
+      </div>
+    );
   }
 
   return (
