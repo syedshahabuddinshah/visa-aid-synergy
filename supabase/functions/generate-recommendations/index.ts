@@ -1,5 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,13 +13,37 @@ serve(async (req) => {
 
   try {
     const { profile } = await req.json();
-    console.log('Received profile:', profile);
+    console.log('Processing profile:', profile);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
+    const systemPrompt = `You are an immigration expert assistant. Based on the user's profile, analyze and recommend suitable immigration options from developed countries worldwide, not limited to any specific list. For each country, determine eligibility for various visa types (student, work, permanent residence, etc.) based on the profile data. Format your response as a valid JSON array of recommendations, where each recommendation includes:
+    {
+      "name": "country name",
+      "score": match score between 0-1,
+      "requirements": ["detailed requirement 1", "detailed requirement 2"],
+      "processingTime": "estimated processing time",
+      "visaTypes": ["eligible visa type 1", "eligible visa type 2"],
+      "fundsRequired": minimum funds required in USD,
+      "eligibilityReason": "detailed explanation of eligibility",
+      "isEligible": boolean based on profile match
+    }
+    Focus on providing accurate, detailed recommendations for countries where the profile matches immigration criteria.`;
+
+    const userPrompt = `Generate detailed immigration recommendations for this profile:
+    Age: ${profile.age}
+    Education Level: ${profile.education}
+    Work Experience: ${profile.workExperience} years
+    Language Proficiency: ${profile.languageScore}
+    Available Funds: $${profile.availableFunds}
+    Immigration Purpose: ${profile.purpose}
+    
+    Consider all developed nations, not just specific countries. Analyze eligibility for various visa types based on the profile's qualifications.`;
+
+    console.log('Sending request to OpenAI');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -29,35 +53,10 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: `You are an immigration expert assistant. Generate visa recommendations based on the following profile. 
-            Format your response as a valid JSON array of recommendations, where each recommendation includes:
-            {
-              "name": "country name",
-              "score": number between 0-1,
-              "requirements": ["requirement1", "requirement2"],
-              "processingTime": "estimated time",
-              "visaTypes": ["visa type 1", "visa type 2"],
-              "fundsRequired": number in USD,
-              "eligibilityReason": "brief explanation",
-              "isEligible": boolean
-            }`
-          },
-          {
-            role: 'user',
-            content: `Generate detailed visa recommendations for this profile:
-            Age: ${profile.age}
-            Education: ${profile.education}
-            Work Experience: ${profile.workExperience} years
-            Language Score: ${profile.languageScore}
-            Available Funds: $${profile.availableFunds}
-            Purpose: ${profile.purpose}
-            Preferred Countries: ${profile.preferredCountries.join(', ')}`
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
       }),
     });
 
@@ -68,10 +67,9 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log('OpenAI response:', data);
+    console.log('OpenAI response received:', data);
 
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected OpenAI response format:', data);
+    if (!data.choices?.[0]?.message?.content) {
       throw new Error('Invalid response format from OpenAI');
     }
 
@@ -81,20 +79,21 @@ serve(async (req) => {
       if (!Array.isArray(recommendations)) {
         throw new Error('Recommendations must be an array');
       }
+      console.log('Parsed recommendations:', recommendations);
     } catch (error) {
       console.error('Error parsing OpenAI response:', error);
       console.log('Raw content:', data.choices[0].message.content);
-      // Fallback to basic recommendations
-      recommendations = profile.preferredCountries.map(country => ({
-        name: country,
+      // Provide fallback recommendations
+      recommendations = [{
+        name: "General Recommendation",
         score: 0.5,
-        requirements: ["Basic eligibility requirements"],
-        processingTime: "3-6 months",
-        visaTypes: ["Student Visa", "Work Visa"],
+        requirements: ["Please try again, there was an error processing your profile"],
+        processingTime: "Varies",
+        visaTypes: ["Various visa types available"],
         fundsRequired: 10000,
-        eligibilityReason: "Basic eligibility check required",
+        eligibilityReason: "Error in processing recommendations",
         isEligible: true,
-      }));
+      }];
     }
 
     return new Response(JSON.stringify({ recommendations }), {
@@ -105,10 +104,19 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: error.message,
-        recommendations: [] // Return empty array instead of throwing
+        recommendations: [{
+          name: "Error",
+          score: 0,
+          requirements: ["An error occurred while generating recommendations"],
+          processingTime: "N/A",
+          visaTypes: [],
+          fundsRequired: 0,
+          eligibilityReason: "Error: " + error.message,
+          isEligible: false,
+        }]
       }),
       {
-        status: 200, // Return 200 even for errors to handle them gracefully
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

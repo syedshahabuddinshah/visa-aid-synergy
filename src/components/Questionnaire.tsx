@@ -20,28 +20,23 @@ export type UserProfile = {
   availableFunds: string;
 };
 
-const AVAILABLE_COUNTRIES = ["Canada", "Australia", "UK", "USA", "New Zealand", "Germany"];
-
 const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => void }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { setRecommendations } = useRecommendations();
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    const savedProfile = sessionStorage.getItem('tempProfile');
-    return savedProfile ? JSON.parse(savedProfile) : {
-      age: "",
-      education: "",
-      workExperience: "",
-      languageScore: "",
-      preferredCountries: [],
-      purpose: "",
-      availableFunds: "",
-    };
+  const [profile, setProfile] = useState<UserProfile>({
+    age: "",
+    education: "",
+    workExperience: "",
+    languageScore: "",
+    preferredCountries: [],
+    purpose: "",
+    availableFunds: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showRecommendations, setShowRecommendations] = useState(false);
 
   useEffect(() => {
     const checkExistingProfile = async () => {
@@ -74,13 +69,13 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
             purpose: data.purpose || "",
             availableFunds: data.available_funds?.toString() || "",
           };
-          setExistingProfile(formattedProfile);
           setProfile(formattedProfile);
           
           // Generate recommendations for existing profile
           const questionnaireLogic = new QuestionnaireLogic();
           const recommendations = await questionnaireLogic.generateRecommendations(formattedProfile);
           setRecommendations(recommendations);
+          setShowRecommendations(true);
           onComplete(formattedProfile);
         }
       } catch (error) {
@@ -120,10 +115,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         }
         break;
       case 3:
-        if (!profile.purpose || profile.preferredCountries.length === 0) {
+        if (!profile.purpose) {
           toast({
             title: "Please fill all fields",
-            description: "Purpose and preferred countries are required to proceed.",
+            description: "Immigration purpose is required to proceed.",
             variant: "destructive",
           });
           return false;
@@ -181,6 +176,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         const questionnaireLogic = new QuestionnaireLogic();
         const recommendations = await questionnaireLogic.generateRecommendations(profile);
         setRecommendations(recommendations);
+        setShowRecommendations(true);
         onComplete(profile);
       } catch (error: any) {
         console.error('Error saving profile:', error);
@@ -205,13 +201,8 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     return <div className="flex justify-center items-center p-8">Loading...</div>;
   }
 
-  if (existingProfile) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-gray-600 mb-4">Your profile has been loaded and recommendations are being generated.</p>
-        <RecommendationsList />
-      </div>
-    );
+  if (showRecommendations) {
+    return <RecommendationsList />;
   }
 
   return (
@@ -232,7 +223,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
             ? "Personal Information"
             : step === 2
             ? "Professional Background"
-            : "Immigration Preferences"}
+            : "Immigration Purpose"}
         </h2>
       </div>
 
@@ -249,7 +240,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           <PreferencesStep 
             profile={profile} 
             onProfileChange={handleProfileChange}
-            availableCountries={AVAILABLE_COUNTRIES}
           />
         )}
 
