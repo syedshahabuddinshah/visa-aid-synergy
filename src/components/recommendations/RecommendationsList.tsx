@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import CountryCard from "@/components/CountryCard";
 import { useRecommendations } from "@/contexts/RecommendationsContext";
+import { useNavigate } from "react-router-dom";
 
 const RecommendationsList = () => {
   const { recommendations, resetRecommendations } = useRecommendations();
+  const navigate = useNavigate();
 
   if (recommendations.length === 0) {
     return (
@@ -12,6 +14,12 @@ const RecommendationsList = () => {
       </div>
     );
   }
+
+  const handleStartOver = () => {
+    resetRecommendations();
+    // Force a page reload to reset all state
+    window.location.reload();
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -22,7 +30,7 @@ const RecommendationsList = () => {
         ))}
       </div>
       <div className="flex justify-center">
-        <Button onClick={resetRecommendations} variant="outline" className="mt-4">
+        <Button onClick={handleStartOver} variant="outline" className="mt-4">
           Start Over
         </Button>
       </div>
