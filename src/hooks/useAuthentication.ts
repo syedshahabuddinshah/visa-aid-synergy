@@ -11,17 +11,33 @@ export const useAuthentication = () => {
 
   useEffect(() => {
     checkUser();
-  }, []);
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setIsAuthenticated(!!session);
+      if (event === 'SIGNED_OUT') {
+        navigate('/login');
+      } else if (event === 'SIGNED_IN') {
+        navigate('/');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const checkUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
-      if (session) {
-        navigate("/");
+      if (!session) {
+        navigate("/login");
       }
     } catch (error: any) {
       console.error("Error checking auth status:", error.message);
+      setIsAuthenticated(false);
+      navigate("/login");
     }
   };
 
@@ -100,9 +116,6 @@ export const useAuthentication = () => {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/login`,
-          data: {
-            email: email,
-          }
         }
       });
 
