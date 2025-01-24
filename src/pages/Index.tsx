@@ -6,11 +6,13 @@ import Header from "@/components/layout/Header";
 import Questionnaire from "@/components/Questionnaire";
 import RecommendationsList from "@/components/recommendations/RecommendationsList";
 import type { UserProfile } from "@/components/Questionnaire";
+import { useRecommendations } from "@/contexts/RecommendationsContext";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { toast } = useToast();
+  const { recommendations } = useRecommendations();
 
   useEffect(() => {
     checkAuthStatus();
@@ -45,19 +47,20 @@ const Index = () => {
   };
 
   return (
-    <RecommendationsProvider>
-      <div className="min-h-screen bg-secondary">
-        <div className="container py-8">
-          <Header 
-            isAuthenticated={isAuthenticated}
-            userEmail={userEmail}
-            onSignOut={handleSignOut}
-          />
+    <div className="min-h-screen bg-secondary">
+      <div className="container py-8">
+        <Header 
+          isAuthenticated={isAuthenticated}
+          userEmail={userEmail}
+          onSignOut={handleSignOut}
+        />
+        {recommendations.length === 0 ? (
           <Questionnaire onComplete={() => {}} />
+        ) : (
           <RecommendationsList />
-        </div>
+        )}
       </div>
-    </RecommendationsProvider>
+    </div>
   );
 };
 
