@@ -18,11 +18,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Set up auth state change listener
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+  if (event === 'SIGNED_OUT') {
     // Clear any stored session data
-    localStorage.removeItem('supabase.auth.token');
+    localStorage.clear(); // Clear all local storage to ensure no stale tokens remain
   } else if (event === 'SIGNED_IN' && session) {
-    // Ensure the session is properly stored
+    // Store the session
     localStorage.setItem('supabase.auth.token', session.refresh_token || '');
   }
 });

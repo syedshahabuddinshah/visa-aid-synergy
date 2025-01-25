@@ -16,12 +16,17 @@ export const useAuthentication = () => {
         setIsAuthenticated(!!session);
         
         if (!session) {
-          navigate("/login");
+          // Only navigate to login if we're not already there
+          if (window.location.pathname !== '/login') {
+            navigate("/login");
+          }
         }
       } catch (error: any) {
         console.error("Error checking auth status:", error.message);
         setIsAuthenticated(false);
-        navigate("/login");
+        if (window.location.pathname !== '/login') {
+          navigate("/login");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -30,11 +35,13 @@ export const useAuthentication = () => {
     initializeAuth();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsAuthenticated(!!session);
-      if (event === 'SIGNED_OUT') {
-        navigate('/login');
-      } else if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN') {
+        setIsAuthenticated(true);
         navigate('/');
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        localStorage.clear(); // Clear all local storage
+        navigate('/login');
       }
     });
 
@@ -47,6 +54,7 @@ export const useAuthentication = () => {
     try {
       await supabase.auth.signOut();
       setIsAuthenticated(false);
+      localStorage.clear(); // Clear all local storage
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",
