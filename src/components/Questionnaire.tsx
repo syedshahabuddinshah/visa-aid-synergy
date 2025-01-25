@@ -29,18 +29,24 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const navigate = useNavigate();
   const { setRecommendations } = useRecommendations();
   const [step, setStep] = useState(1);
-  const [profile, setProfile] = useState<UserProfile>({
-    age: "",
-    education: "",
-    workExperience: "",
-    languageScore: "",
-    preferredCountries: [],
-    purpose: "",
-    availableFunds: "",
-    fieldOfStudy: "",
-    maritalStatus: "single",
-    numberOfDependents: "0",
-    spouseIncluded: false,
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    // Try to restore profile from session storage
+    const savedProfile = sessionStorage.getItem('tempProfile');
+    const defaultProfile = {
+      age: "",
+      education: "",
+      workExperience: "",
+      languageScore: "",
+      preferredCountries: [],
+      purpose: "",
+      availableFunds: "",
+      fieldOfStudy: "",
+      maritalStatus: "single",
+      numberOfDependents: "0",
+      spouseIncluded: false,
+    };
+    
+    return savedProfile ? JSON.parse(savedProfile) : defaultProfile;
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,8 +103,20 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       }
     };
 
+    // Check if we have a saved step in session storage
+    const savedStep = sessionStorage.getItem('lastStep');
+    if (savedStep) {
+      setStep(parseInt(savedStep));
+      sessionStorage.removeItem('lastStep');
+    }
+
     checkExistingProfile();
   }, [setRecommendations, onComplete]);
+
+  // Save profile to session storage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('tempProfile', JSON.stringify(profile));
+  }, [profile]);
 
   const handleProfileChange = (updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }));
@@ -145,6 +163,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     
     if (step < 3) {
       setStep(step + 1);
+      sessionStorage.setItem('lastStep', (step + 1).toString());
     } else {
       setIsSubmitting(true);
       try {
@@ -179,8 +198,12 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           updated_at: new Date().toISOString(),
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error saving profile:', error);
+          throw error;
+        }
 
+        // Only clear session storage after successful save
         sessionStorage.removeItem('tempProfile');
         sessionStorage.removeItem('lastStep');
 
@@ -198,7 +221,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         console.error('Error saving profile:', error);
         toast({
           title: "Error",
-          description: "Failed to save your profile. Please try again.",
+          description: error.message || "Failed to save your profile. Please try again.",
           variant: "destructive",
         });
       } finally {
@@ -210,6 +233,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
+      sessionStorage.setItem('lastStep', (step - 1).toString());
     }
   };
 
