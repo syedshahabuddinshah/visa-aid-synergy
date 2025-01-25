@@ -4,15 +4,31 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 export const useAuthentication = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    checkUser();
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+        
+        if (!session) {
+          navigate("/login");
+        }
+      } catch (error: any) {
+        console.error("Error checking auth status:", error.message);
+        setIsAuthenticated(false);
+        navigate("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
       if (event === 'SIGNED_OUT') {
@@ -26,20 +42,6 @@ export const useAuthentication = () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
-
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-      if (!session) {
-        navigate("/login");
-      }
-    } catch (error: any) {
-      console.error("Error checking auth status:", error.message);
-      setIsAuthenticated(false);
-      navigate("/login");
-    }
-  };
 
   const handleSignOut = async () => {
     try {

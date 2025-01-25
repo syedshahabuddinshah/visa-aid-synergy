@@ -9,16 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: window.localStorage
+    persistSession: true,
+    detectSessionInUrl: false,
+    storage: localStorage
   }
 });
 
 // Set up auth state change listener
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') {
+  if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
     // Clear any stored session data
     localStorage.removeItem('supabase.auth.token');
   } else if (event === 'SIGNED_IN' && session) {
