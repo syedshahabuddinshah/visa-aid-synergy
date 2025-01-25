@@ -14,6 +14,10 @@ interface UserProfile {
   preferredCountries: string[];
   purpose: string;
   availableFunds: string;
+  fieldOfStudy: string;
+  maritalStatus: string;
+  numberOfDependents: string;
+  spouseIncluded: boolean;
 }
 
 function generateRecommendations(profile: UserProfile) {
@@ -22,35 +26,60 @@ function generateRecommendations(profile: UserProfile) {
   const countries = [
     {
       name: "Canada",
-      visaTypes: ["Express Entry", "Study Permit", "Work Permit", "Provincial Nominee Program"],
+      visaTypes: [
+        {
+          name: "Express Entry",
+          description: "Federal Skilled Worker Program for skilled professionals",
+          baseScore: 0.85,
+          minFunds: 13000,
+          spouseFunds: 4000,
+          dependentFunds: 3000,
+          points: [
+            { category: "Age", available: 12, details: "Maximum points for age 25-35" },
+            { category: "Education", available: 25, details: "Degree level and field of study" },
+            { category: "Work Experience", available: 15, details: "Years of skilled work" },
+            { category: "Language", available: 28, details: "English/French proficiency" },
+          ],
+          processingTime: "6-8 months"
+        },
+        {
+          name: "Provincial Nominee Program",
+          description: "Provincial nomination for specific skills and experience",
+          baseScore: 0.8,
+          minFunds: 15000,
+          spouseFunds: 4500,
+          dependentFunds: 3500,
+          points: [
+            { category: "Work Experience", available: 30, details: "Relevant provincial experience" },
+            { category: "Job Offer", available: 20, details: "Valid job offer from employer" },
+            { category: "Education", available: 25, details: "Education level and field" },
+            { category: "Language", available: 25, details: "Language proficiency" },
+          ],
+          processingTime: "15-19 months"
+        }
+      ],
       baseScore: 0.85,
-      minFunds: 13000,
-      languageRequirement: "IELTS 6.0 or equivalent",
-      processingTime: "6-8 months"
     },
     {
       name: "Australia",
-      visaTypes: ["Skilled Migration", "Student Visa", "Temporary Skill Shortage Visa", "Graduate Visa"],
+      visaTypes: [
+        {
+          name: "Skilled Independent Visa",
+          description: "Points-based visa for skilled workers",
+          baseScore: 0.8,
+          minFunds: 20000,
+          spouseFunds: 5000,
+          dependentFunds: 3500,
+          points: [
+            { category: "Age", available: 30, details: "Maximum points for age 25-32" },
+            { category: "English Level", available: 20, details: "Proficient English" },
+            { category: "Education", available: 20, details: "Qualification level" },
+            { category: "Experience", available: 20, details: "Years of skilled employment" },
+          ],
+          processingTime: "4-8 months"
+        }
+      ],
       baseScore: 0.8,
-      minFunds: 20000,
-      languageRequirement: "IELTS 6.0 or equivalent",
-      processingTime: "4-8 months"
-    },
-    {
-      name: "United Kingdom",
-      visaTypes: ["Skilled Worker Visa", "Student Visa", "Graduate Route", "High Potential Individual Visa"],
-      baseScore: 0.75,
-      minFunds: 16000,
-      languageRequirement: "IELTS 6.5 or equivalent",
-      processingTime: "3-6 months"
-    },
-    {
-      name: "New Zealand",
-      visaTypes: ["Skilled Migrant", "Student Visa", "Work Visa", "Accredited Employer Work Visa"],
-      baseScore: 0.7,
-      minFunds: 15000,
-      languageRequirement: "IELTS 6.5 or equivalent",
-      processingTime: "3-5 months"
     }
   ];
 
@@ -60,34 +89,39 @@ function generateRecommendations(profile: UserProfile) {
     let applicableVisas = [];
     let requirements = [
       `Valid passport`,
-      `Minimum funds: $${country.minFunds}`,
-      country.languageRequirement,
-      "Clean criminal record",
-      "Medical examination clearance"
+      `Clean criminal record`,
+      `Medical examination clearance`
     ];
+
+    // Add dependent-related requirements
+    if (profile.spouseIncluded) {
+      requirements.push("Spouse's passport and documentation");
+    }
+    if (parseInt(profile.numberOfDependents) > 0) {
+      requirements.push(`Documentation for ${profile.numberOfDependents} dependent(s)`);
+    }
 
     // Age assessment
     const age = parseInt(profile.age);
     if (age >= 25 && age <= 35) {
       eligibilityScore += 0.1;
       eligibilityReason.push("Age is within optimal range (25-35)");
-    } else if (age < 25) {
-      eligibilityReason.push("Younger candidates may have more study visa options");
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Student")));
     }
 
-    // Education assessment
+    // Education and Field of Study assessment
     if (profile.education.toLowerCase().includes("phd")) {
       eligibilityScore += 0.15;
       eligibilityReason.push("PhD qualification provides additional points");
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Skilled")));
     } else if (profile.education.toLowerCase().includes("masters")) {
       eligibilityScore += 0.1;
       eligibilityReason.push("Master's degree is highly valued");
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Skilled")));
-    } else if (profile.education.toLowerCase().includes("bachelors")) {
+    }
+
+    // Field of Study bonus
+    const inDemandFields = ["engineering", "healthcare", "information technology", "science"];
+    if (inDemandFields.some(field => profile.fieldOfStudy.toLowerCase().includes(field))) {
       eligibilityScore += 0.05;
-      eligibilityReason.push("Bachelor's degree meets minimum requirements");
+      eligibilityReason.push("In-demand field of study");
     }
 
     // Work experience assessment
@@ -95,11 +129,9 @@ function generateRecommendations(profile: UserProfile) {
     if (workExp >= 5) {
       eligibilityScore += 0.15;
       eligibilityReason.push("Extensive work experience (5+ years)");
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Work") || v.includes("Skilled")));
     } else if (workExp >= 3) {
       eligibilityScore += 0.1;
       eligibilityReason.push("Good work experience (3+ years)");
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Work")));
     }
 
     // Language proficiency assessment
@@ -107,28 +139,72 @@ function generateRecommendations(profile: UserProfile) {
     if (languageScore.includes("advanced") || languageScore.includes("proficient")) {
       eligibilityScore += 0.15;
       eligibilityReason.push("Strong language proficiency");
-    } else if (languageScore.includes("intermediate")) {
-      eligibilityScore += 0.05;
-      eligibilityReason.push("Adequate language skills, may need improvement");
     }
+
+    // Process each visa type
+    country.visaTypes.forEach(visa => {
+      const scoredPoints = visa.points.map(point => {
+        let scored = 0;
+        
+        // Calculate points based on profile
+        switch (point.category.toLowerCase()) {
+          case "age":
+            scored = age >= 25 && age <= 35 ? point.available : Math.floor(point.available / 2);
+            break;
+          case "education":
+            scored = profile.education.includes("phd") ? point.available :
+                    profile.education.includes("masters") ? Math.floor(point.available * 0.8) :
+                    profile.education.includes("bachelors") ? Math.floor(point.available * 0.6) :
+                    Math.floor(point.available * 0.3);
+            break;
+          case "work experience":
+          case "experience":
+            scored = workExp >= 5 ? point.available :
+                    workExp >= 3 ? Math.floor(point.available * 0.7) :
+                    Math.floor(point.available * 0.4);
+            break;
+          case "language":
+          case "english level":
+            scored = languageScore.includes("advanced") ? point.available :
+                    languageScore.includes("intermediate") ? Math.floor(point.available * 0.7) :
+                    Math.floor(point.available * 0.4);
+            break;
+        }
+        
+        return {
+          ...point,
+          scored
+        };
+      });
+
+      applicableVisas.push({
+        name: visa.name,
+        description: visa.description,
+        points: scoredPoints,
+        requiredFunds: {
+          base: visa.minFunds,
+          spouse: profile.spouseIncluded ? visa.spouseFunds : 0,
+          perDependent: parseInt(profile.numberOfDependents) > 0 ? visa.dependentFunds : 0
+        }
+      });
+    });
 
     // Financial assessment
     const funds = parseInt(profile.availableFunds);
-    if (funds >= country.minFunds * 1.5) {
+    const baseMinFunds = Math.min(...country.visaTypes.map(v => v.minFunds));
+    const spouseFunds = profile.spouseIncluded ? Math.min(...country.visaTypes.map(v => v.spouseFunds)) : 0;
+    const dependentFunds = parseInt(profile.numberOfDependents) * Math.min(...country.visaTypes.map(v => v.dependentFunds));
+    const totalRequiredFunds = baseMinFunds + spouseFunds + dependentFunds;
+
+    if (funds >= totalRequiredFunds * 1.5) {
       eligibilityScore += 0.15;
       eligibilityReason.push("Strong financial position");
-    } else if (funds >= country.minFunds) {
+    } else if (funds >= totalRequiredFunds) {
       eligibilityScore += 0.05;
       eligibilityReason.push("Meets minimum financial requirements");
     } else {
       eligibilityScore -= 0.1;
       eligibilityReason.push("Additional funds may be required");
-    }
-
-    // Purpose-specific adjustments
-    if (profile.purpose === "study" && funds >= country.minFunds) {
-      applicableVisas.push(...country.visaTypes.filter(v => v.includes("Student")));
-      eligibilityReason.push("Eligible for student visa pathways");
     }
 
     // Normalize score to maximum of 1
@@ -139,9 +215,13 @@ function generateRecommendations(profile: UserProfile) {
       name: country.name,
       score: Number(eligibilityScore.toFixed(2)),
       requirements,
-      processingTime: country.processingTime,
-      visaTypes: [...new Set(applicableVisas)],
-      fundsRequired: country.minFunds,
+      processingTime: country.visaTypes[0].processingTime,
+      visaTypes: applicableVisas,
+      fundsRequired: baseMinFunds,
+      dependentFunds: {
+        spouse: spouseFunds,
+        perDependent: Math.min(...country.visaTypes.map(v => v.dependentFunds))
+      },
       eligibilityReason: eligibilityReason.join(". "),
       isEligible: eligibilityScore >= 0.6
     });
@@ -161,66 +241,10 @@ serve(async (req) => {
     const { profile } = await req.json();
     console.log('Processing profile:', profile);
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    
-    // If no API key is configured, use local recommendations
-    if (!openAIApiKey) {
-      console.log('OpenAI API key not configured, using local recommendations');
-      const recommendations = generateRecommendations(profile);
-      return new Response(JSON.stringify({ recommendations }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an immigration expert assistant. Generate detailed recommendations for immigration options.'
-            },
-            {
-              role: 'user',
-              content: `Analyze this profile for immigration recommendations:
-                Age: ${profile.age}
-                Education: ${profile.education}
-                Work Experience: ${profile.workExperience} years
-                Language Score: ${profile.languageScore}
-                Available Funds: $${profile.availableFunds}
-                Purpose: ${profile.purpose}`
-            }
-          ],
-          temperature: 0.7,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('OpenAI API error, using local recommendations');
-        const recommendations = generateRecommendations(profile);
-        return new Response(JSON.stringify({ recommendations }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const data = await response.json();
-      return new Response(JSON.stringify({ recommendations: data.choices[0].message.content }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-
-    } catch (error) {
-      console.error('Error calling OpenAI API:', error);
-      const recommendations = generateRecommendations(profile);
-      return new Response(JSON.stringify({ recommendations }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const recommendations = generateRecommendations(profile);
+    return new Response(JSON.stringify({ recommendations }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error in generate-recommendations function:', error);
     return new Response(JSON.stringify({ error: error.message }), {

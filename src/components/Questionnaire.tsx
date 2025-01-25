@@ -18,6 +18,10 @@ export type UserProfile = {
   preferredCountries: string[];
   purpose: string;
   availableFunds: string;
+  fieldOfStudy: string;
+  maritalStatus: string;
+  numberOfDependents: string;
+  spouseIncluded: boolean;
 };
 
 const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => void }) => {
@@ -33,7 +37,12 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
     preferredCountries: [],
     purpose: "",
     availableFunds: "",
+    fieldOfStudy: "",
+    maritalStatus: "single",
+    numberOfDependents: "0",
+    spouseIncluded: false,
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showRecommendations, setShowRecommendations] = useState(false);

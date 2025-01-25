@@ -14,10 +14,14 @@ export type Database = {
           age: number | null
           created_at: string
           education: string | null
+          field_of_study: string | null
           id: string
           language_score: string | null
+          marital_status: string | null
+          number_of_dependents: number | null
           preferred_countries: string[] | null
           purpose: string | null
+          spouse_included: boolean | null
           updated_at: string | null
           work_experience: number | null
         }
@@ -25,10 +29,14 @@ export type Database = {
           age?: number | null
           created_at?: string
           education?: string | null
+          field_of_study?: string | null
           id: string
           language_score?: string | null
+          marital_status?: string | null
+          number_of_dependents?: number | null
           preferred_countries?: string[] | null
           purpose?: string | null
+          spouse_included?: boolean | null
           updated_at?: string | null
           work_experience?: number | null
         }
@@ -36,10 +44,14 @@ export type Database = {
           age?: number | null
           created_at?: string
           education?: string | null
+          field_of_study?: string | null
           id?: string
           language_score?: string | null
+          marital_status?: string | null
+          number_of_dependents?: number | null
           preferred_countries?: string[] | null
           purpose?: string | null
+          spouse_included?: boolean | null
           updated_at?: string | null
           work_experience?: number | null
         }
