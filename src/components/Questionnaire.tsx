@@ -30,7 +30,6 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const { setRecommendations } = useRecommendations();
   const [step, setStep] = useState(1);
   const [profile, setProfile] = useState<UserProfile>(() => {
-    // Try to restore profile from session storage
     const savedProfile = sessionStorage.getItem('tempProfile');
     const defaultProfile = {
       age: "",
@@ -68,8 +67,13 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           .eq('id', user.id)
           .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
           console.error('Error fetching profile:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch your profile. Please try again.",
+            variant: "destructive",
+          });
           setIsLoading(false);
           return;
         }
@@ -98,22 +102,24 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch your profile. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Check if we have a saved step in session storage
     const savedStep = sessionStorage.getItem('lastStep');
     if (savedStep) {
       setStep(parseInt(savedStep));
-      sessionStorage.removeItem('lastStep');
     }
 
     checkExistingProfile();
-  }, [setRecommendations, onComplete]);
+  }, [setRecommendations, onComplete, toast]);
 
-  // Save profile to session storage whenever it changes
   useEffect(() => {
     sessionStorage.setItem('tempProfile', JSON.stringify(profile));
   }, [profile]);
@@ -196,14 +202,20 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           number_of_dependents: parseInt(profile.numberOfDependents),
           spouse_included: profile.spouseIncluded,
           updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
         });
 
         if (error) {
           console.error('Error saving profile:', error);
-          throw error;
+          toast({
+            title: "Error",
+            description: "Failed to save your profile. Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
 
-        // Only clear session storage after successful save
         sessionStorage.removeItem('tempProfile');
         sessionStorage.removeItem('lastStep');
 

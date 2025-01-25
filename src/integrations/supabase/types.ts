@@ -12,6 +12,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          available_funds: number | null
           created_at: string
           education: string | null
           field_of_study: string | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          available_funds?: number | null
           created_at?: string
           education?: string | null
           field_of_study?: string | null
@@ -42,6 +44,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          available_funds?: number | null
           created_at?: string
           education?: string | null
           field_of_study?: string | null
