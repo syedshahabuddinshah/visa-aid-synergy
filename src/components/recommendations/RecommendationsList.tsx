@@ -17,7 +17,8 @@ const RecommendationsList = () => {
 
   const handleStartOver = () => {
     resetRecommendations();
-    // Force a page reload to reset all state
+    sessionStorage.removeItem('tempProfile');
+    sessionStorage.removeItem('lastStep');
     window.location.reload();
   };
 

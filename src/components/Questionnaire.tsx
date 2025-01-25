@@ -93,12 +93,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
             spouseIncluded: data.spouse_included || false,
           };
           setProfile(formattedProfile);
-          
-          const questionnaireLogic = new QuestionnaireLogic();
-          const recommendations = await questionnaireLogic.generateRecommendations(formattedProfile);
-          setRecommendations(recommendations);
-          setShowRecommendations(true);
-          onComplete(formattedProfile);
+          sessionStorage.setItem('tempProfile', JSON.stringify(formattedProfile));
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -216,19 +211,16 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           return;
         }
 
-        sessionStorage.removeItem('tempProfile');
-        sessionStorage.removeItem('lastStep');
-
-        toast({
-          title: "Profile saved!",
-          description: "Your immigration profile has been saved successfully.",
-        });
-
         const questionnaireLogic = new QuestionnaireLogic();
         const recommendations = await questionnaireLogic.generateRecommendations(profile);
         setRecommendations(recommendations);
         setShowRecommendations(true);
         onComplete(profile);
+
+        toast({
+          title: "Profile saved!",
+          description: "Your immigration profile has been saved successfully.",
+        });
       } catch (error: any) {
         console.error('Error saving profile:', error);
         toast({
