@@ -69,7 +69,7 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
         }
 
         if (data) {
-          const formattedProfile = {
+          const formattedProfile: UserProfile = {
             age: data.age?.toString() || "",
             education: data.education || "",
             workExperience: data.work_experience?.toString() || "",
@@ -77,10 +77,13 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
             preferredCountries: data.preferred_countries || [],
             purpose: data.purpose || "",
             availableFunds: data.available_funds?.toString() || "",
+            fieldOfStudy: data.field_of_study || "",
+            maritalStatus: data.marital_status || "single",
+            numberOfDependents: data.number_of_dependents?.toString() || "0",
+            spouseIncluded: data.spouse_included || false,
           };
           setProfile(formattedProfile);
           
-          // Generate recommendations for existing profile
           const questionnaireLogic = new QuestionnaireLogic();
           const recommendations = await questionnaireLogic.generateRecommendations(formattedProfile);
           setRecommendations(recommendations);
@@ -104,10 +107,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
   const validateStep = () => {
     switch (step) {
       case 1:
-        if (!profile.age || !profile.education || !profile.availableFunds) {
+        if (!profile.age || !profile.education || !profile.availableFunds || !profile.fieldOfStudy) {
           toast({
             title: "Please fill all fields",
-            description: "Age, education, and available funds are required to proceed.",
+            description: "All personal information fields are required to proceed.",
             variant: "destructive",
           });
           return false;
@@ -169,6 +172,10 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
           preferred_countries: profile.preferredCountries,
           purpose: profile.purpose,
           available_funds: parseInt(profile.availableFunds),
+          field_of_study: profile.fieldOfStudy,
+          marital_status: profile.maritalStatus,
+          number_of_dependents: parseInt(profile.numberOfDependents),
+          spouse_included: profile.spouseIncluded,
           updated_at: new Date().toISOString(),
         });
 
