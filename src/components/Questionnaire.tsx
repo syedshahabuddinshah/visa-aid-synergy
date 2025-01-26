@@ -148,8 +148,16 @@ const Questionnaire = ({ onComplete }: { onComplete: (profile: UserProfile) => v
       case 3:
         if (!profile.purpose) {
           toast({
-            title: "Please fill all fields",
+            title: "Please select a purpose",
             description: "Immigration purpose is required to proceed.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        if (profile.preferredCountries.length === 0) {
+          toast({
+            title: "Please select at least one country",
+            description: "Select up to 3 countries for recommendations.",
             variant: "destructive",
           });
           return false;
