@@ -25,9 +25,13 @@ export class QuestionnaireLogic {
   private generateFallbackRecommendations(profile: UserProfile): RecommendationResult[] {
     const recommendations: RecommendationResult[] = [];
     
+    // Only process selected countries
     profile.preferredCountries.forEach(countryName => {
       const country = countryData[countryName];
-      if (!country) return;
+      if (!country) {
+        console.warn(`Country data not found for ${countryName}`);
+        return;
+      }
 
       const baseRequirements = [
         "Valid passport",
@@ -42,8 +46,12 @@ export class QuestionnaireLogic {
         baseRequirements.push(`Documentation for ${profile.numberOfDependents} dependent(s)`);
       }
 
+      // Get visa type based on selected purpose
       const visa = country.visaTypes[profile.purpose];
-      if (!visa) return;
+      if (!visa) {
+        console.warn(`Visa type ${profile.purpose} not found for ${countryName}`);
+        return;
+      }
 
       const { score: visaScore, scoredPoints } = calculateVisaScore(visa, profile);
       const funds = parseInt(profile.availableFunds);
