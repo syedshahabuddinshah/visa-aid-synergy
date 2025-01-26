@@ -7,6 +7,7 @@ import { RecommendationResult } from "./types/RecommendationTypes";
 export class QuestionnaireLogic {
   async generateRecommendations(profile: UserProfile) {
     try {
+      console.log('Generating recommendations for profile:', profile);
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
         body: { profile }
       });
@@ -15,6 +16,13 @@ export class QuestionnaireLogic {
         console.error('Error from generate-recommendations:', error);
         throw error;
       }
+
+      if (!data?.recommendations || data.recommendations.length === 0) {
+        console.log('No recommendations from edge function, using fallback');
+        return this.generateFallbackRecommendations(profile);
+      }
+
+      console.log('Received recommendations:', data.recommendations);
       return data.recommendations;
     } catch (error) {
       console.error('Error generating recommendations:', error);
@@ -23,6 +31,7 @@ export class QuestionnaireLogic {
   }
 
   private generateFallbackRecommendations(profile: UserProfile): RecommendationResult[] {
+    console.log('Generating fallback recommendations for countries:', profile.preferredCountries);
     const recommendations: RecommendationResult[] = [];
     
     // Only process selected countries
@@ -91,6 +100,7 @@ export class QuestionnaireLogic {
       });
     });
 
+    console.log('Generated recommendations:', recommendations);
     return recommendations.sort((a, b) => b.score - a.score);
   }
 }
