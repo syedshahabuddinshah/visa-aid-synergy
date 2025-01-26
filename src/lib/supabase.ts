@@ -30,7 +30,7 @@ const initializeSession = async () => {
 
 // Set up auth state change listener
 supabase.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+  if (event === 'SIGNED_OUT') {
     // Clear any stored session data
     localStorage.removeItem('supabase.auth.token');
     localStorage.removeItem('tempProfile');
